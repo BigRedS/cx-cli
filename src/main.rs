@@ -759,7 +759,15 @@ impl Commands {
 #[derive(Subcommand)]
 enum ProfilesCmd {
     /// List all configured profiles.
-    List,
+    #[command(after_help = "\
+Examples:
+  cx profiles list
+  cx profiles list org1        # only profiles whose name or label contains \"org1\"")]
+    List {
+        /// Filter to profiles whose name or label contains this text (case-insensitive).
+        #[arg(value_name = "FILTER", add = ArgValueCompleter::new(complete_profile_names))]
+        filter: Option<String>,
+    },
     /// Add or reconfigure a profile.
     ///
     /// Values supplied via flags/env are never prompted for. On a terminal,
@@ -2968,7 +2976,7 @@ async fn main() -> Result<()> {
         let profiles_cli = ProfilesCli::from_arg_matches(&profile_matches)?;
         let ProfilesTopLevel::Profiles { cmd } = profiles_cli.command;
         let result = match cmd {
-            ProfilesCmd::List => commands::profiles::run_list(),
+            ProfilesCmd::List { filter } => commands::profiles::run_list(filter.as_deref()),
             ProfilesCmd::Add {
                 name,
                 name_flag,
@@ -3063,7 +3071,7 @@ async fn main() -> Result<()> {
     // it falls through to here.
     if let Commands::Profiles { cmd } = cli.command {
         let result = match cmd {
-            ProfilesCmd::List => commands::profiles::run_list(),
+            ProfilesCmd::List { filter } => commands::profiles::run_list(filter.as_deref()),
             ProfilesCmd::Add {
                 name,
                 name_flag,

@@ -26,6 +26,13 @@ cx profiles list
 cx profiles set-default prod-us
 ```
 
+With many profiles, pass a filter to list only those whose name or label contains
+it (case-insensitive substring):
+
+```bash
+cx profiles list org1
+```
+
 Add profiles as you need them and select one explicitly with `-p`:
 
 ```bash

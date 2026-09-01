@@ -58,7 +58,7 @@ Run `cx init` to set up a profile and get started.
 
 | Command | Purpose |
 |---|---|
-| `cx profiles list` | List every configured profile and show which one is the default. |
+| `cx profiles list [FILTER]` | List every configured profile and show which one is the default. `FILTER` narrows the list to profiles whose name or label contains that text (case-insensitive). |
 | `cx profiles add [NAME]` | Create or reconfigure a profile (see below). |
 | `cx profiles set-default <NAME>` | Make an existing profile the default, so commands without `-p` use it. |
 | `cx profiles delete <NAME>` | Delete a profile and its stored credentials. Asks for confirmation; `-f`/`--force` skips it. |

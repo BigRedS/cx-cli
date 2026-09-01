@@ -300,12 +300,24 @@ fn hint_completions_refresh() {
 
 // ── List ──────────────────────────────────────────────────────────────────────
 
-pub fn run_list() -> Result<()> {
+/// Case-insensitive substring match against the profile name and its optional
+/// label. `needle` must already be lowercased.
+fn profile_matches(name: &str, profile: &Profile, needle: &str) -> bool {
+    name.to_lowercase().contains(needle)
+        || profile
+            .label
+            .as_deref()
+            .is_some_and(|label| label.to_lowercase().contains(needle))
+}
+
+/// List profiles, optionally narrowed to those whose name or label contains
+/// `filter` (case-insensitive substring match).
+pub fn run_list(filter: Option<&str>) -> Result<()> {
     let global_config = load_config().unwrap_or_default();
 
     let names = list_profile_names()?;
 
-    let entries: Vec<(String, Profile)> = names
+    let mut entries: Vec<(String, Profile)> = names
         .into_iter()
         .filter_map(|name| {
             let profile = load_profile(&name).ok()?;
@@ -315,6 +327,23 @@ pub fn run_list() -> Result<()> {
 
     if entries.is_empty() {
         println!("No profiles configured. Run `cx profiles add` to create one.");
+        return Ok(());
+    }
+
+    // A filter that matches nothing is not the same as having no profiles at
+    // all — keep the total around so the message can say so.
+    let total = entries.len();
+    if let Some(needle) = filter {
+        let needle = needle.to_lowercase();
+        entries.retain(|(name, profile)| profile_matches(name, profile, &needle));
+    }
+
+    if entries.is_empty() {
+        let needle = filter.unwrap_or_default();
+        println!(
+            "No profiles match \"{needle}\". \
+             Run `cx profiles list` to see all {total} profiles."
+        );
         return Ok(());
     }
 

@@ -44,6 +44,21 @@ region = "eu1"
     fs::write(profiles_dir.join(format!("{name}.toml")), profile_toml).unwrap();
 }
 
+fn seed_profile_with_label(home: &std::path::Path, name: &str, label: &str) {
+    let profiles_dir = home.join(".cx").join("profiles");
+    fs::create_dir_all(&profiles_dir).unwrap();
+    let profile_toml = format!(
+        r#"
+auth = "api_key"
+credential_storage = "file"
+api_key = "fake-key-000"
+region = "eu1"
+label = "{label}"
+"#
+    );
+    fs::write(profiles_dir.join(format!("{name}.toml")), profile_toml).unwrap();
+}
+
 fn seed_config(home: &std::path::Path, content: &str) {
     let cx_dir = home.join(".cx");
     fs::create_dir_all(&cx_dir).unwrap();
@@ -179,6 +194,95 @@ fn list_empty_shows_hint() {
     assert!(
         stdout.contains("No profiles configured"),
         "should show hint, got: {stdout}"
+    );
+}
+
+#[test]
+fn list_filter_matches_name_substring() {
+    let tmp = temp_home();
+    seed_profile(&tmp, "org1-prod");
+    seed_profile(&tmp, "org2-prod");
+
+    let output = cx(&tmp)
+        .args(["profiles", "list", "org1"])
+        .output()
+        .expect("failed to run cx");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("org1-prod"),
+        "should list org1-prod, got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("org2-prod"),
+        "should not list org2-prod, got: {stdout}"
+    );
+}
+
+#[test]
+fn list_filter_matches_label() {
+    let tmp = temp_home();
+    seed_profile_with_label(&tmp, "alpha", "org1-staging");
+    seed_profile(&tmp, "beta");
+
+    let output = cx(&tmp)
+        .args(["profiles", "list", "org1"])
+        .output()
+        .expect("failed to run cx");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("alpha"),
+        "should match on label, got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("beta"),
+        "should not list beta, got: {stdout}"
+    );
+}
+
+#[test]
+fn list_filter_is_case_insensitive() {
+    let tmp = temp_home();
+    seed_profile(&tmp, "org1-prod");
+
+    let output = cx(&tmp)
+        .args(["profiles", "list", "ORG1"])
+        .output()
+        .expect("failed to run cx");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("org1-prod"),
+        "uppercase filter should match, got: {stdout}"
+    );
+}
+
+/// A filter matching nothing is distinct from having no profiles at all — the
+/// message must not tell the user to run `cx profiles add`.
+#[test]
+fn list_filter_no_match_reports_total() {
+    let tmp = temp_home();
+    seed_profile(&tmp, "alpha");
+    seed_profile(&tmp, "beta");
+
+    let output = cx(&tmp)
+        .args(["profiles", "list", "org1"])
+        .output()
+        .expect("failed to run cx");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("No profiles match \"org1\""),
+        "should report no match, got: {stdout}"
+    );
+    assert!(
+        stdout.contains("all 2 profiles"),
+        "should report the unfiltered total, got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("alpha"),
+        "should not list non-matching profiles, got: {stdout}"
     );
 }
 
